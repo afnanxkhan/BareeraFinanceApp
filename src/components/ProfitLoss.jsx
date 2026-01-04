@@ -8,6 +8,10 @@ const ProfitLoss = () => {
   const [loading, setLoading] = useState(true);
   const [revenueData, setRevenueData] = useState([]);
   const [expenseData, setExpenseData] = useState([]);
+  const [dateRange, setDateRange] = useState({
+    from: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
+    to: new Date().toISOString().split('T')[0]
+  });
 
   useEffect(() => {
     const fetchData = async () => {
@@ -106,51 +110,136 @@ const ProfitLoss = () => {
   if (loading) return <div className="p-10 text-white">Loading P&L...</div>;
 
   return (
-    <div className="min-h-screen p-6 bg-gradient-to-br from-[#1a1f2b] to-[#261b2d] text-white">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen p-4 sm:p-6 bg-gradient-to-br from-[#121620] to-[#1a1c2e] text-white">
+      <div className="max-w-7xl mx-auto space-y-6 sm:space-y-10">
 
         {/* HEADER */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Profit & Loss Statement</h1>
-          <p className="opacity-70">Income statement showing profit and loss analysis</p>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60">
+              Profit & Loss
+            </h1>
+            <p className="text-white/40 text-sm sm:text-base mt-1 italic">
+              Net income and expenses for the selected period
+            </p>
+          </div>
+          <button
+            onClick={handleExportCSV}
+            className="w-full sm:w-auto px-6 py-4 rounded-2xl bg-white/5 border border-white/10 text-white/60 hover:text-white transition-all font-bold"
+          >
+            Export CSV
+          </button>
         </div>
 
-        {/* MAIN CARD */}
-        <div className="rounded-2xl p-8 bg-white/5 backdrop-blur-xl border border-white/10 shadow-2xl">
-
-          {/* SUMMARY */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
-            <Summary label="Total Revenue" value={totalRevenue} color="green" />
-            <Summary label="Total Expenses" value={totalExpenses} color="red" />
-            <Summary label="Gross Profit" value={grossProfit} color="blue" />
-            <Summary
-              label="Net Profit / Loss"
-              value={netProfit}
-              color={netProfit >= 0 ? "green" : "red"}
+        {/* Date Filter */}
+        <div className="flex flex-col md:flex-row gap-4 no-print items-stretch md:items-end">
+          <div className="flex-1">
+            <label className="block text-sm mb-2 opacity-70">From Date</label>
+            <input
+              type="date"
+              value={dateRange.from}
+              onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })}
+              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 outline-none focus:border-pink-500"
             />
           </div>
-
-          {/* ACTIONS */}
-          <div className="flex gap-4 mb-8">
-            <button
-              onClick={handleExportCSV}
-              className="px-6 py-3 rounded-xl bg-gradient-to-r from-pink-500 to-rose-500"
-            >
-              Export CSV
-            </button>
+          <div className="flex-1">
+            <label className="block text-sm mb-2 opacity-70">To Date</label>
+            <input
+              type="date"
+              value={dateRange.to}
+              onChange={(e) => setDateRange({ ...dateRange, to: e.target.value })}
+              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 outline-none focus:border-pink-500"
+            />
           </div>
+          <button
+            onClick={() => { /* fetching is handled by effect */ }}
+            className="px-6 py-3 bg-pink-500 rounded-xl font-bold hover:shadow-[0_0_20px_rgba(236,72,153,0.4)] transition"
+          >
+            Apply Filter
+          </button>
+        </div>
 
-          {/* TABLES */}
-          <PLTable title="Revenue" data={revenueData} total={totalRevenue} color="green" />
-          <PLTable title="Expenses" data={expenseData} total={totalExpenses} color="red" />
-
-          {/* PROFIT CARDS */}
-          <div className="grid md:grid-cols-3 gap-6 mt-10">
-            <ProfitCard title="Gross Profit" value={grossProfit} color="green" />
-            <ProfitCard title="Total Expenses" value={totalExpenses} color="blue" />
-            <ProfitCard title="Net Profit / Loss" value={netProfit} color={netProfit >= 0 ? "green" : "red"} />
+        {/* Result Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+          <div className="rounded-3xl bg-white/5 border border-white/10 p-6 sm:p-8 text-center ring-1 ring-white/10">
+            <div className="text-sm opacity-60 mb-2">Total Revenue</div>
+            <div className="text-2xl sm:text-3xl font-bold text-green-300">
+              PKR {totalRevenue.toLocaleString()}
+            </div>
           </div>
+          <div className="rounded-3xl bg-white/5 border border-white/10 p-6 sm:p-8 text-center ring-1 ring-white/10">
+            <div className="text-sm opacity-60 mb-2">Total Expenses</div>
+            <div className="text-2xl sm:text-3xl font-bold text-red-300">
+              PKR {totalExpenses.toLocaleString()}
+            </div>
+          </div>
+          <div className="rounded-3xl bg-white/5 border border-white/20 p-6 sm:p-8 text-center bg-gradient-to-br from-white/10 to-transparent">
+            <div className="text-sm opacity-60 mb-2">Net Profit</div>
+            <div className="text-2xl sm:text-3xl font-bold text-blue-300">
+              PKR {netProfit.toLocaleString()}
+            </div>
+          </div>
+        </div>
 
+        {/* Detailed Table */}
+        <div className="rounded-3xl bg-white/5 border border-white/10 overflow-hidden">
+          <div className="p-4 sm:p-6 border-b border-white/10">
+            <h3 className="text-lg font-semibold">Breakdown by Account</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left min-w-[600px]">
+              <thead className="bg-white/10">
+                <tr>
+                  <th className="p-4 text-left">Code</th>
+                  <th className="p-4 text-left">Account</th>
+                  <th className="p-4 text-left">Category</th>
+                  <th className="p-4 text-left">Amount (PKR)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {revenueData.map(d => (
+                  <tr key={d.accountCode} className="border-t border-white/10 hover:bg-white/5">
+                    <td className="p-4 text-white/50 text-sm font-medium">{d.accountCode}</td>
+                    <td className="p-4 font-semibold text-white">{d.accountName}</td>
+                    <td className="p-4 capitalize">{d.category}</td>
+                    <td className={`p-4 font-medium text-green-300`}>
+                      PKR {d.amount.toLocaleString()}
+                    </td>
+                  </tr>
+                ))}
+                {expenseData.map(d => (
+                  <tr key={d.accountCode} className="border-t border-white/10 hover:bg-white/5">
+                    <td className="p-4 text-white/50 text-sm font-medium">{d.accountCode}</td>
+                    <td className="p-4 font-semibold text-white">{d.accountName}</td>
+                    <td className="p-4 capitalize">{d.category}</td>
+                    <td className={`p-4 font-medium text-red-300`}>
+                      PKR {d.amount.toLocaleString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot className="bg-white/10">
+                <tr>
+                  <td colSpan="3" className="p-4 text-right font-bold">Total Revenue</td>
+                  <td className={`p-4 font-bold text-green-300`}>
+                    PKR {totalRevenue.toLocaleString()}
+                  </td>
+                </tr>
+                <tr>
+                  <td colSpan="3" className="p-4 text-right font-bold">Total Expenses</td>
+                  <td className={`p-4 font-bold text-red-300`}>
+                    PKR {totalExpenses.toLocaleString()}
+                  </td>
+                </tr>
+                <tr>
+                  <td colSpan="3" className="p-4 text-right font-bold">Net Profit / Loss</td>
+                  <td className={`p-4 font-bold text-${netProfit >= 0 ? "green" : "red"}-300`}>
+                    PKR {netProfit.toLocaleString()}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
         </div>
       </div>
     </div>
@@ -194,8 +283,8 @@ const PLTable = ({ title, data, total, color }) => (
           <tbody>
             {data.map(d => (
               <tr key={d.accountCode} className="border-t border-white/10 hover:bg-white/5">
-                <td className="p-4 font-mono">{d.accountCode}</td>
-                <td className="p-4">{d.accountName}</td>
+                <td className="p-4 text-white/50 text-sm font-medium">{d.accountCode}</td>
+                <td className="p-4 font-semibold text-white">{d.accountName}</td>
                 <td className="p-4 capitalize">{d.category}</td>
                 <td className={`p-4 font-medium text-${color}-300`}>
                   PKR {d.amount.toLocaleString()}

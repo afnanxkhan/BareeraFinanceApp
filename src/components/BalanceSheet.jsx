@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../AuthContext";
 import { databases, DATABASE_ID, COLLECTIONS, Query } from "../lib/appwrite";
+import { exportToCSV } from "../lib/exportUtils";
 
 const BalanceSheet = () => {
   const { user } = useAuth();
@@ -132,6 +133,15 @@ const BalanceSheet = () => {
     alert(isBalanced ? "✅ Balance Sheet is balanced" : `❌ Difference: PKR ${Math.abs(difference).toLocaleString()}`);
   };
 
+  const handleExport = () => {
+    const data = [
+      ...assetsData.map(i => ({ ...i, section: 'Assets' })),
+      ...liabilitiesData.map(i => ({ ...i, section: 'Liabilities' })),
+      ...equityData.map(i => ({ ...i, section: 'Equity' }))
+    ];
+    exportToCSV(data, `balance_sheet_${selectedDate}.csv`, ['section', 'id', 'name', 'category', 'amount']);
+  };
+
   const getBadge = (category) => {
     const map = {
       Asset: ["Asset", "bg-blue-500/10 text-blue-300"],
@@ -145,47 +155,75 @@ const BalanceSheet = () => {
     return [category, "bg-white/10 text-white"];
   };
 
+  const summaries = {
+    assets: totalAssets,
+    liabilities: totalLiabilities,
+    equity: totalEquity,
+    liabilitiesAndEquity: totalLE,
+    isBalanced: isBalanced,
+    difference: difference
+  };
+
   if (loading) return <div className="p-10 text-white">Loading Balance Sheet...</div>;
 
   return (
-    <div className="min-h-screen p-6 bg-gradient-to-br from-[#1a1f2b] to-[#261b2d] text-white">
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Balance Sheet</h1>
-          <p className="opacity-70">
-            Assets, Liabilities, and Equity as of {selectedDate}
-          </p>
+    <div className="min-h-screen p-4 sm:p-6 bg-gradient-to-br from-[#121620] to-[#1a1c2e] text-white">
+      <div className="max-w-7xl mx-auto space-y-6 sm:space-y-10">
+
+        {/* HEADER */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60">
+              Balance Sheet
+            </h1>
+            <p className="text-white/40 text-sm sm:text-base mt-1 italic">
+              Financial position as of {selectedDate}
+            </p>
+          </div>
+          <button
+            onClick={handleExport}
+            className="w-full sm:w-auto px-6 py-4 rounded-2xl bg-white/5 border border-white/10 text-white/60 hover:text-white transition-all font-bold"
+          >
+            Export CSV
+          </button>
         </div>
 
-        <div className="rounded-2xl p-8 bg-white/5 backdrop-blur-xl border border-white/10 shadow-2xl">
-          {/* SUMMARY */}
-          <div className="grid md:grid-cols-4 gap-4 mb-8">
-            <Summary label="Total Assets" value={totalAssets} color="blue" />
-            <Summary label="Total Liabilities" value={totalLiabilities} color="red" />
-            <Summary label="Total Equity" value={totalEquity} color="green" />
-            <Summary
-              label="Liabilities + Equity"
-              value={totalLE}
-              color={isBalanced ? "green" : "red"}
-            />
+        {/* Grid Summary */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+          <div className="rounded-3xl bg-white/5 border border-white/10 p-6 sm:p-8 text-center ring-1 ring-white/10">
+            <div className="text-sm opacity-60 mb-2">Total Assets</div>
+            <div className="text-2xl sm:text-3xl font-bold text-blue-300">
+              PKR {summaries.assets.toLocaleString()}
+            </div>
           </div>
-
-          <div className="flex gap-4 mb-10">
-            <button
-              onClick={handleValidation}
-              className="px-6 py-3 rounded-xl bg-white/10"
-            >
-              Validate Balance
-            </button>
-            <button className="px-6 py-3 rounded-xl bg-gradient-to-r from-pink-500 to-rose-500">
-              Export
-            </button>
+          <div className="rounded-3xl bg-white/5 border border-white/10 p-6 sm:p-8 text-center ring-1 ring-white/10">
+            <div className="text-sm opacity-60 mb-2">Total Liabilities</div>
+            <div className="text-2xl sm:text-3xl font-bold text-red-300">
+              PKR {summaries.liabilities.toLocaleString()}
+            </div>
           </div>
-
-          <Section title="Assets" color="blue" data={assetsData} total={totalAssets} getBadge={getBadge} />
-          <Section title="Liabilities" color="red" data={liabilitiesData} total={totalLiabilities} getBadge={getBadge} />
-          <Section title="Equity" color="green" data={equityData} total={totalEquity} getBadge={getBadge} />
+          <div className="rounded-3xl bg-white/5 border border-white/20 p-6 sm:p-8 text-center bg-gradient-to-br from-white/10 to-transparent">
+            <div className="text-sm opacity-60 mb-2">Total Equity</div>
+            <div className="text-2xl sm:text-3xl font-bold text-green-300">
+              PKR {summaries.equity.toLocaleString()}
+            </div>
+          </div>
         </div>
+
+        <div className="flex gap-4 mb-10">
+          <button
+            onClick={handleValidation}
+            className="px-6 py-3 rounded-xl bg-white/5 border border-white/10 font-medium text-white/80
+                         hover:bg-white/10 hover:text-white hover:border-white/20 hover:shadow-lg hover:shadow-purple-500/10
+                         transition-all duration-300 flex items-center gap-2"
+          >
+            <span>⚖️</span> Validate Balance
+          </button>
+        </div>
+
+        <Section title="Assets" color="blue" data={assetsData} total={totalAssets} getBadge={getBadge} />
+        <Section title="Liabilities" color="red" data={liabilitiesData} total={totalLiabilities} getBadge={getBadge} />
+        <Section title="Equity" color="green" data={equityData} total={totalEquity} getBadge={getBadge} />
       </div>
     </div>
   );
@@ -201,42 +239,43 @@ const Summary = ({ label, value, color }) => (
 );
 
 const Section = ({ title, data, total, color, getBadge }) => (
-  <div className="mb-10 p-6 rounded-xl bg-white/10 border border-white/10">
-    <h3 className="text-xl font-semibold mb-6">{title}</h3>
-    {data.length === 0 ? <p className="text-white/30 italic">No accounts</p> : (
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead className="bg-white/10">
-            <tr>
-              <th className="p-4 text-left">Code</th>
-              <th className="p-4 text-left">Account</th>
-              <th className="p-4 text-left">Type</th>
-              <th className="p-4 text-left">Amount (PKR)</th>
-              <th className="p-4 text-left">%</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.map((i) => {
-              const pct = total === 0 ? 0 : ((Math.abs(i.amount) / total) * 100).toFixed(1);
-              const [text, cls] = getBadge(i.category);
-              return (
-                <tr key={i.id} className="border-t border-white/10 hover:bg-white/5">
-                  <td className="p-4 font-mono">{i.id}</td>
-                  <td className="p-4">{i.name}</td>
-                  <td className="p-4">
-                    <span className={`px-2 py-1 rounded text-xs ${cls}`}>{text}</span>
-                  </td>
-                  <td className={`p-4 font-medium text-${color}-300`}>
-                    PKR {i.amount.toLocaleString()}
-                  </td>
-                  <td className="p-4">{pct}%</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    )}
+  <div className="rounded-3xl bg-white/5 border border-white/10 overflow-hidden">
+    <div className="p-4 sm:p-6 border-b border-white/10 flex justify-between items-center bg-white/5">
+      <h3 className="text-lg font-semibold">{title}</h3>
+      <div className="text-green-300 font-bold">Total: PKR {total.toLocaleString()}</div>
+    </div>
+    <div className="overflow-x-auto">
+      <table className="w-full text-left min-w-[600px]">
+        <thead className="bg-white/10">
+          <tr>
+            <th className="p-4 text-left">Code</th>
+            <th className="p-4 text-left">Account</th>
+            <th className="p-4 text-left">Type</th>
+            <th className="p-4 text-left">Amount (PKR)</th>
+            <th className="p-4 text-left">%</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.map((i) => {
+            const pct = total === 0 ? 0 : ((Math.abs(i.amount) / total) * 100).toFixed(1);
+            const [text, cls] = getBadge(i.category);
+            return (
+              <tr key={i.id} className="border-t border-white/10 hover:bg-white/5">
+                <td className="p-4 text-white/50 text-sm font-medium">{i.id}</td>
+                <td className="p-4 font-semibold text-white">{i.name}</td>
+                <td className="p-4">
+                  <span className={`px-2 py-1 rounded text-xs ${cls}`}>{text}</span>
+                </td>
+                <td className={`p-4 font-medium text-${color}-300`}>
+                  PKR {i.amount.toLocaleString()}
+                </td>
+                <td className="p-4 text-white/50 text-sm">{pct}%</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   </div>
 );
 

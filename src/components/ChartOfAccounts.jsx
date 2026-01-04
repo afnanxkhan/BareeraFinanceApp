@@ -81,7 +81,7 @@ const AccountForm = memo(({ onSave, onCancel }) => {
   );
 });
 
-const ChartOfAccounts = () => {
+const ChartOfAccounts = ({ navigate }) => {
   // State for accounts
   const { user } = useAuth();
   const [accounts, setAccounts] = useState([]);
@@ -203,293 +203,252 @@ const ChartOfAccounts = () => {
   };
 
   return (
-    <div
-      className="min-h-screen p-6"
-      style={{
-        background: 'linear-gradient(135deg, #1a1f2b 0%, #261b2d 100%)'
-      }}
-    >
-      {/* Liquid background shapes */}
-      <div
-        className="fixed top-0 left-0 opacity-50"
-        style={{
-          width: '200px',
-          height: '200px',
-          background: 'rgba(255, 255, 255, 0.05)',
-          filter: 'blur(80px)',
-          borderRadius: '50%'
-        }}
-      />
-      <div
-        className="fixed right-10 top-1/2 transform -translate-y-1/2 opacity-40"
-        style={{
-          width: '260px',
-          height: '260px',
-          background: 'rgba(255, 255, 255, 0.04)',
-          filter: 'blur(90px)',
-          borderRadius: '50%'
-        }}
-      />
-      <div
-        className="fixed bottom-0 right-0 opacity-50"
-        style={{
-          width: '180px',
-          height: '180px',
-          background: 'rgba(255, 255, 255, 0.05)',
-          filter: 'blur(70px)',
-          borderRadius: '50%'
-        }}
-      />
-
-      {/* Header */}
-      <div className="relative z-10 mb-8 flex justify-between items-end">
-        <div>
-          <h1 className="text-3xl font-bold mb-2" style={{ color: '#ffffff' }}>
-            Chart of Accounts
-          </h1>
-          <p className="text-lg" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-            Manage your organization's financial accounts
-          </p>
-        </div>
-        <button
-          onClick={() => setShowAddForm(true)}
-          className="px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-bold 
-                       shadow-lg hover:shadow-cyan-500/30 hover:-translate-y-0.5 transition-all">
-          + Add Account
-        </button>
-      </div>
-
-      <div className="relative z-10 space-y-8">
-
-        {showAddForm && (
-          <AccountForm onSave={handleAddAccount} onCancel={() => setShowAddForm(false)} />
-        )}
-
-        {/* Sorting and Filtering Section */}
+    <div className="min-h-screen p-4 sm:p-6 bg-gradient-to-br from-[#121620] to-[#1a1c2e] text-white">
+      <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8">
+        {/* Liquid background shapes */}
         <div
-          className="p-6 rounded-2xl mb-8"
+          className="fixed top-0 left-0 opacity-50"
           style={{
-            background: 'rgba(255, 255, 255, 0.06)',
-            backdropFilter: 'blur(20px)',
-            border: '1px solid rgba(255, 255, 255, 0.1)'
+            width: '200px',
+            height: '200px',
+            background: 'rgba(255, 255, 255, 0.05)',
+            filter: 'blur(80px)',
+            borderRadius: '50%'
           }}
-        >
-          <h2 className="text-xl font-semibold mb-4" style={{ color: '#ffffff' }}>
-            Filter & Sort Accounts
-          </h2>
+        />
+        <div
+          className="fixed right-10 top-1/2 transform -translate-y-1/2 opacity-40"
+          style={{
+            width: '260px',
+            height: '260px',
+            background: 'rgba(255, 255, 255, 0.04)',
+            filter: 'blur(90px)',
+            borderRadius: '50%'
+          }}
+        />
+        <div
+          className="fixed bottom-0 right-0 opacity-50"
+          style={{
+            width: '180px',
+            height: '180px',
+            background: 'rgba(255, 255, 255, 0.05)',
+            filter: 'blur(70px)',
+            borderRadius: '50%'
+          }}
+        />
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Search Input */}
-            <div>
-              <input
-                type="text"
-                placeholder="Search accounts..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full focus:outline-none transition-all duration-300"
-                style={{
-                  height: '48px',
-                  padding: '0 16px',
-                  borderRadius: '10px',
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
-                  background: 'rgba(255, 255, 255, 0.08)',
-                  color: '#ffffff'
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = '#ff3e73';
-                  e.target.style.boxShadow = '0 0 0 4px rgba(255, 45, 112, 0.3)';
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = 'rgba(255, 255, 255, 0.15)';
-                  e.target.style.boxShadow = 'none';
-                }}
-              />
-            </div>
-
-            {/* Account Type Filter */}
-            <div>
-              <select
-                value={filterType}
-                onChange={(e) => setFilterType(e.target.value)}
-                className="w-full focus:outline-none transition-all duration-300"
-                style={{
-                  height: '48px',
-                  padding: '0 16px',
-                  borderRadius: '10px',
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
-                  background: 'rgba(255, 255, 255, 0.08)',
-                  color: '#ffffff'
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = '#ff3e73';
-                  e.target.style.boxShadow = '0 0 0 4px rgba(255, 45, 112, 0.3)';
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = 'rgba(255, 255, 255, 0.15)';
-                  e.target.style.boxShadow = 'none';
-                }}
-              >
-                {accountTypes.map(type => (
-                  <option key={type} value={type} style={{ background: '#1a1f2b', color: '#ffffff' }}>
-                    {type === 'All' ? 'All Types' : type}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Sort Options */}
-            <div>
-              <select
-                value={`${sortField}-${sortDirection}`}
-                onChange={(e) => {
-                  const [field, direction] = e.target.value.split('-');
-                  setSortField(field);
-                  setSortDirection(direction);
-                }}
-                className="w-full focus:outline-none transition-all duration-300"
-                style={{
-                  height: '48px',
-                  padding: '0 16px',
-                  borderRadius: '10px',
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
-                  background: 'rgba(255, 255, 255, 0.08)',
-                  color: '#ffffff'
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = '#ff3e73';
-                  e.target.style.boxShadow = '0 0 0 4px rgba(255, 45, 112, 0.3)';
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = 'rgba(255, 255, 255, 0.15)';
-                  e.target.style.boxShadow = 'none';
-                }}
-              >
-                <option value="name-asc" style={{ background: '#1a1f2b', color: '#ffffff' }}>Sort: Name A-Z</option>
-                <option value="name-desc" style={{ background: '#1a1f2b', color: '#ffffff' }}>Sort: Name Z-A</option>
-                <option value="type-asc" style={{ background: '#1a1f2b', color: '#ffffff' }}>Sort: Type A-Z</option>
-                <option value="type-desc" style={{ background: '#1a1f2b', color: '#ffffff' }}>Sort: Type Z-A</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Results Count */}
-          <div className="mt-4">
-            <p style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-              Showing {filteredAndSortedAccounts.length} of {accounts.length} accounts
-              {filterType !== 'All' && ` (Filtered by: ${filterType})`}
-              {searchTerm && ` (Search: "${searchTerm}")`}
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60">
+              Chart of Accounts
+            </h1>
+            <p className="text-white/40 text-sm sm:text-base mt-1 italic">
+              Manage your organization's financial structural accounts
             </p>
           </div>
+          <button
+            onClick={() => setShowAddForm(true)}
+            className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-pink-500 to-rose-600 rounded-2xl font-bold shadow-lg shadow-pink-500/25 hover:shadow-pink-500/40 hover:-translate-y-1 transition-all active:translate-y-0"
+          >
+            + New Account
+          </button>
         </div>
 
-        {/* Accounts Table */}
-        <div
-          className="rounded-2xl overflow-hidden"
-          style={{
-            background: 'rgba(255, 255, 255, 0.06)',
-            backdropFilter: 'blur(20px)',
-            border: '1px solid rgba(255, 255, 255, 0.1)'
-          }}
-        >
-          {/* Table Header */}
-          <div
-            className="grid grid-cols-3 p-4 border-b"
-            style={{ borderColor: 'rgba(255, 255, 255, 0.15)' }}
-          >
-            <button
-              onClick={() => handleSort('name')}
-              className="font-semibold text-left flex items-center gap-2 hover:opacity-80 transition-opacity"
-              style={{ color: '#ffffff' }}
-            >
-              Account Name {getSortIcon('name')}
-            </button>
-            <button
-              onClick={() => handleSort('type')}
-              className="font-semibold text-left flex items-center gap-2 hover:opacity-80 transition-opacity"
-              style={{ color: '#ffffff' }}
-            >
-              Account Type {getSortIcon('type')}
-            </button>
-            <div className="font-semibold" style={{ color: '#ffffff' }}>Opening Balance</div>
+        <div className="relative z-10 space-y-8">
+
+          {showAddForm && (
+            <AccountForm onSave={handleAddAccount} onCancel={() => setShowAddForm(false)} />
+          )}
+
+          {/* Sorting and Filtering Section */}
+          <div className="p-6 sm:p-8 rounded-3xl bg-white/5 border border-white/10 backdrop-blur-xl">
+            <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
+              <span className="w-1.5 h-6 bg-pink-500 rounded-full"></span>
+              Manage Accounts
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Search Input */}
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search accounts..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="input"
+                />
+              </div>
+
+              {/* Account Type Filter */}
+              <div>
+                <select
+                  value={filterType}
+                  onChange={(e) => setFilterType(e.target.value)}
+                  className="input"
+                >
+                  {accountTypes.map(type => (
+                    <option key={type} value={type} className="bg-[#1a1f2b]">
+                      {type === 'All' ? 'All Types' : type}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Sort Options */}
+              <div>
+                <select
+                  value={`${sortField}-${sortDirection}`}
+                  onChange={(e) => {
+                    const [field, direction] = e.target.value.split('-');
+                    setSortField(field);
+                    setSortDirection(direction);
+                  }}
+                  className="input"
+                >
+                  <option value="name-asc" className="bg-[#1a1f2b]">Sort: Name A-Z</option>
+                  <option value="name-desc" className="bg-[#1a1f2b]">Sort: Name Z-A</option>
+                  <option value="type-asc" className="bg-[#1a1f2b]">Sort: Type A-Z</option>
+                  <option value="type-desc" className="bg-[#1a1f2b]">Sort: Type Z-A</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Results Count */}
+            <div className="mt-4 text-sm text-white/40 italic">
+              Showing {filteredAndSortedAccounts.length} of {accounts.length} accounts
+            </div>
           </div>
 
-          {/* Table Body */}
-          <div className="divide-y" style={{ divideColor: 'rgba(255, 255, 255, 0.1)' }}>
-            {filteredAndSortedAccounts.length > 0 ? (
-              filteredAndSortedAccounts.map((account) => (
-                <div
-                  key={account.id}
-                  className="grid grid-cols-3 p-4 transition-all duration-300 hover:bg-opacity-10"
-                  style={{
-                    background: 'transparent',
-                    color: '#ffffff'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'transparent';
-                  }}
-                >
-                  <div style={{ color: '#ffffff' }}>{account.name}</div>
-                  <div>
-                    <span
-                      className="px-3 py-1 rounded-full text-sm"
-                      style={{
-                        background: getTypeColor(account.type, 0.2),
-                        color: getTypeColor(account.type, 1)
-                      }}
-                    >
-                      {account.type}
-                    </span>
+          {/* Accounts List (Upgraded to Cards) */}
+          <div className="space-y-4">
+            {filteredAndSortedAccounts.map((account) => (
+              <div
+                key={account.id}
+                className="group flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 sm:p-6 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all duration-300 gap-4"
+              >
+                <div className="flex items-center gap-4">
+                  <div
+                    className="w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold border border-white/10 transition-all group-hover:scale-110"
+                    style={{
+                      background: getTypeColor(account.type, 0.2),
+                      color: getTypeColor(account.type, 1)
+                    }}
+                  >
+                    {account.name?.[0]?.toUpperCase()}
                   </div>
-                  <div style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                    {account.openingBalance ? `PKR ${account.openingBalance.toLocaleString()}` : '-'}
+                  <div>
+                    <h4 className="text-lg font-bold group-hover:text-pink-400 transition-colors">
+                      {account.name}
+                    </h4>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span
+                        className="text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-md bg-white/5 border border-white/10"
+                        style={{ color: getTypeColor(account.type, 1) }}
+                      >
+                        {account.type}
+                      </span>
+                      <span className="text-[10px] text-white/30 tracking-tighter">ID: {account.id}</span>
+                    </div>
                   </div>
                 </div>
-              ))
-            ) : (
-              <div className="p-8 text-center" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-6 w-full sm:w-auto">
+                  <div className="text-left sm:text-right">
+                    <div className="text-[10px] text-white/40 uppercase tracking-widest mb-1">Opening Balance</div>
+                    <div className="text-xl font-black text-white">
+                      {account.openingBalance ? `PKR ${account.openingBalance.toLocaleString()}` : 'PKR 0'}
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => navigate("GeneralLedger", { accountFilter: account.name })}
+                      className="flex-1 sm:flex-none p-3 px-6 rounded-xl bg-white/10 hover:bg-pink-500/20 text-white font-semibold transition-all"
+                    >
+                      View Ledger
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {filteredAndSortedAccounts.length === 0 && (
+              <div className="p-12 text-center rounded-3xl bg-white/5 border border-white/10 text-white/30 italic">
                 No accounts found matching your criteria.
               </div>
             )}
           </div>
+
+          {/* Summary Stats */}
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 md:gap-4 pb-12">
+            {accountTypes.filter(type => type !== 'All').map(type => (
+              <button
+                key={type}
+                onClick={() => setFilterType(type === filterType ? 'All' : type)}
+                className={`p-4 sm:p-6 rounded-3xl text-center transition-all duration-500 group relative overflow-hidden backdrop-blur-xl border
+                ${filterType === type
+                    ? 'bg-white/10 border-pink-500 shadow-lg shadow-pink-500/20 -translate-y-1'
+                    : 'bg-white/5 border-white/10 hover:border-white/20 hover:bg-white/8 hover:-translate-y-0.5'}`}
+              >
+                <div className="relative z-10">
+                  <div
+                    className="text-3xl font-black mb-1 transition-transform group-hover:scale-110"
+                    style={{ color: getTypeColor(type, 1) }}
+                  >
+                    {accounts.filter(acc => acc.type === type).length}
+                  </div>
+                  <div className="text-[10px] uppercase tracking-[0.2em] font-bold text-white/40 group-hover:text-white/60 transition-colors">
+                    {type}s
+                  </div>
+                </div>
+
+                {/* Subtle hover glow */}
+                <div
+                  className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity blur-2xl"
+                  style={{ background: getTypeColor(type, 1) }}
+                ></div>
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* Summary Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          {accountTypes.filter(type => type !== 'All').map(type => (
-            <div
-              key={type}
-              className="p-4 rounded-2xl text-center transition-all duration-300 hover:shadow-lg cursor-pointer"
-              style={{
-                background: filterType === type
-                  ? 'rgba(255, 255, 255, 0.1)'
-                  : 'rgba(255, 255, 255, 0.06)',
-                backdropFilter: 'blur(20px)',
-                border: `1px solid ${filterType === type ? '#ff3e73' : 'rgba(255, 255, 255, 0.1)'}`
-              }}
-              onClick={() => setFilterType(type === filterType ? 'All' : type)}
-              onMouseEnter={(e) => {
-                if (filterType !== type) {
-                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (filterType !== type) {
-                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)';
-                }
-              }}
-            >
-              <div className="text-2xl font-bold mb-1" style={{ color: getTypeColor(type, 1) }}>
-                {accounts.filter(acc => acc.type === type).length}
-              </div>
-              <div className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>
-                {type}
-              </div>
-            </div>
-          ))}
-        </div>
+        <style>{`
+        .input {
+          width: 100%;
+          padding: 0.875rem 1.25rem;
+          border-radius: 1rem;
+          background: rgba(255,255,255,0.06);
+          color: white;
+          outline: none;
+          border: 1px solid rgba(255,255,255,0.1);
+          transition: all 0.3s;
+          font-size: 16px;
+        }
+        
+        .input:focus {
+          background: rgba(255,255,255,0.1);
+          border-color: rgba(255,62,115,0.5);
+          box-shadow: 0 0 0 4px rgba(255,62,115,0.1);
+        }
+
+        .input::placeholder {
+          color: rgba(255,255,255,0.2);
+        }
+
+        select.input {
+          appearance: none;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='rgba(255,255,255,0.4)'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+          background-repeat: no-repeat;
+          background-position: right 1rem center;
+          background-size: 1.25rem;
+        }
+
+        /* Remove spinner from number input */
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+          -webkit-appearance: none;
+          margin: 0;
+        }
+      `}</style>
       </div>
     </div>
   );

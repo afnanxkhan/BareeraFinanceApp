@@ -9,6 +9,10 @@ const CashFlow = () => {
   const [operatingActivities, setOperatingActivities] = useState([]);
   const [investingActivities, setInvestingActivities] = useState([]);
   const [financingActivities, setFinancingActivities] = useState([]);
+  const [dateRange, setDateRange] = useState({
+    from: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
+    to: new Date().toISOString().split('T')[0]
+  });
 
   useEffect(() => {
     const fetchData = async () => {
@@ -134,43 +138,79 @@ const CashFlow = () => {
   if (loading) return <div className="p-10 text-white">Loading Cash Flow...</div>;
 
   return (
-    <div className="min-h-screen p-6 bg-gradient-to-br from-[#1a1f2b] to-[#261b2d] text-white">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen p-4 sm:p-6 bg-gradient-to-br from-[#121620] to-[#1a1c2e] text-white">
+      <div className="max-w-7xl mx-auto space-y-6 sm:space-y-10">
 
         {/* HEADER */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Cash Flow Statement</h1>
-          <p className="opacity-70">
-            Cash flows from operating, investing, and financing activities (Indirect Method Approximation)
-          </p>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60">
+              Cash Flow
+            </h1>
+            <p className="text-white/40 text-sm sm:text-base mt-1 italic">
+              Movement of cash in and out of the business
+            </p>
+          </div>
+          <button
+            onClick={handleExportCSV}
+            className="w-full sm:w-auto px-6 py-4 rounded-2xl bg-white/5 border border-white/10 text-white/60 hover:text-white transition-all font-bold"
+          >
+            Export CSV
+          </button>
         </div>
 
-        {/* MAIN CARD */}
-        <div className="rounded-2xl p-8 bg-white/5 backdrop-blur-xl border border-white/10 shadow-2xl">
-
-          {/* SUMMARY */}
-          <div className="grid md:grid-cols-4 gap-4 mb-8">
-            <Summary label="Operating" value={operatingTotal} />
-            <Summary label="Investing" value={investingTotal} />
-            <Summary label="Financing" value={financingTotal} />
-            <Summary label="Net Cash Flow" value={netCashFlow} highlight />
+        {/* Date Filter */}
+        <div className="flex flex-col md:flex-row gap-4 no-print items-stretch md:items-end">
+          <div className="flex-1">
+            <label className="block text-sm mb-2 opacity-70">From Date</label>
+            <input
+              type="date"
+              value={dateRange.from}
+              onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })}
+              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 outline-none focus:border-pink-500"
+            />
           </div>
-
-          {/* ACTIONS */}
-          <div className="flex gap-4 mb-8">
-            <button
-              onClick={handleExportCSV}
-              className="px-6 py-3 rounded-xl bg-gradient-to-r from-pink-500 to-rose-500"
-            >
-              Export CSV
-            </button>
+          <div className="flex-1">
+            <label className="block text-sm mb-2 opacity-70">To Date</label>
+            <input
+              type="date"
+              value={dateRange.to}
+              onChange={(e) => setDateRange({ ...dateRange, to: e.target.value })}
+              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 outline-none focus:border-pink-500"
+            />
           </div>
+          <button className="px-6 py-3 bg-pink-500 rounded-xl font-bold hover:shadow-[0_0_20px_rgba(236,72,153,0.4)] transition">
+            Apply Filter
+          </button>
+        </div>
 
+        {/* Net Change Summary */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+          <div className="rounded-3xl bg-white/5 border border-white/10 p-6 sm:p-8 text-center ring-1 ring-white/10">
+            <div className="text-sm opacity-60 mb-2">Net Cash Change</div>
+            <div className={`text-2xl sm:text-4xl font-extrabold ${netCashFlow >= 0 ? "text-green-400" : "text-red-400"}`}>
+              PKR {netCashFlow.toLocaleString()}
+            </div>
+          </div>
+          <div className="rounded-3xl bg-white/5 border border-white/20 p-6 sm:p-8 flex flex-col justify-center bg-gradient-to-br from-white/10 to-transparent">
+            <div className="flex justify-between items-center mb-1">
+              <span className="text-sm opacity-60">Opening Cash (approx)</span>
+              <span className="font-medium">PKR 0</span>
+            </div>
+            <div className="flex justify-between items-center border-t border-white/10 pt-2 mt-2">
+              <span className="text-sm opacity-60 font-semibold">Closing Cash</span>
+              <span className="text-xl font-bold text-blue-300">PKR {netCashFlow.toLocaleString()}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Sections */}
+        <div className="space-y-8">
           <Section title="Operating Activities" data={operatingActivities} total={operatingTotal} formatAmount={formatAmount} badge={badge} />
           <Section title="Investing Activities" data={investingActivities} total={investingTotal} formatAmount={formatAmount} badge={badge} />
           <Section title="Financing Activities" data={financingActivities} total={financingTotal} formatAmount={formatAmount} badge={badge} />
-
         </div>
+
       </div>
     </div>
   );
@@ -196,44 +236,49 @@ const Summary = ({ label, value, highlight }) => (
 );
 
 const Section = ({ title, data, total, formatAmount, badge }) => (
-  <div className="mb-8 p-6 rounded-xl bg-white/10 border border-white/10">
-    <h3 className="text-xl font-semibold mb-6">{title}</h3>
-    {data.length === 0 ? <p className="text-white/30 italic mb-4">No activities recorded</p> : (
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead className="bg-white/10">
-            <tr>
-              <th className="p-4 text-left">Code</th>
-              <th className="p-4 text-left">Activity/Account</th>
-              <th className="p-4 text-left">Type</th>
-              <th className="p-4 text-left">Amount (PKR)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.map(i => {
-              return (
-                <tr key={i.id} className="border-t border-white/10 hover:bg-white/5">
-                  <td className="p-4 font-mono">{i.id}</td>
-                  <td className="p-4">{i.name}</td>
-                  <td className="p-4">
-                    <span className={`px-2 py-1 rounded text-xs ${badge(i.type)}`}>
-                      {i.type === "inflow" ? "Cash In" : "Cash Out"}
-                    </span>
-                  </td>
-                  <td className="p-4 font-medium">{formatAmount(i.amount)}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-          <tfoot className="bg-white/10">
-            <tr>
-              <td colSpan="3" className="p-4 text-right font-bold">Net Cash</td>
-              <td className="p-4 font-bold">{formatAmount(total)}</td>
-            </tr>
-          </tfoot>
-        </table>
+  <div className="rounded-3xl bg-white/5 border border-white/10 overflow-hidden">
+    <div className="p-4 sm:p-6 border-b border-white/10 flex justify-between items-center bg-white/5">
+      <h3 className="text-lg font-semibold">{title}</h3>
+      <div className={`font-bold ${total >= 0 ? "text-green-300" : "text-red-300"}`}>
+        Total: PKR {total.toLocaleString()}
       </div>
-    )}
+    </div>
+    <div className="overflow-x-auto">
+      <table className="w-full text-left min-w-[600px]">
+        <thead className="bg-white/10">
+          <tr>
+            <th className="p-4 text-left">Code</th>
+            <th className="p-4 text-left">Activity/Account</th>
+            <th className="p-4 text-left">Type</th>
+            <th className="p-4 text-left">Amount (PKR)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.length === 0 ? (
+            <tr>
+              <td colSpan="4" className="p-8 text-center text-white/30 italic">No activities recorded in this section</td>
+            </tr>
+          ) : data.map(i => (
+            <tr key={i.id} className="border-t border-white/10 hover:bg-white/5">
+              <td className="p-4 text-white/50 text-sm font-medium">{i.id}</td>
+              <td className="p-4 font-semibold text-white">{i.name}</td>
+              <td className="p-4">
+                <span className={`px-2 py-1 rounded text-xs ${badge(i.type)}`}>
+                  {i.type === "inflow" ? "Cash In" : "Cash Out"}
+                </span>
+              </td>
+              <td className="p-4 font-medium">{formatAmount(i.amount)}</td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot className="bg-white/10">
+          <tr>
+            <td colSpan="3" className="p-4 text-right font-bold">Section Net Change</td>
+            <td className="p-4 font-bold">{formatAmount(total)}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
   </div>
 );
 

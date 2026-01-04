@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../AuthContext";
 import { databases, DATABASE_ID, COLLECTIONS, Query } from "../lib/appwrite";
+import { Download } from "lucide-react";
+import { exportToCSV } from "../lib/exportUtils";
 
 const BudgetVsActual = () => {
   const { user } = useAuth();
@@ -62,8 +64,8 @@ const BudgetVsActual = () => {
           }
         });
 
-        // Filter for Expense accounts only for this report
-        const filtered = Object.values(actualsMap).filter(a => a.type && a.type.toLowerCase().includes('expense'));
+        // Filter for any account that has Budget OR Actual activity
+        const filtered = Object.values(actualsMap).filter(a => a.budget !== 0 || a.actual !== 0);
         setReportData(filtered);
 
       } catch (error) {
@@ -78,78 +80,106 @@ const BudgetVsActual = () => {
 
   const variance = (b, a) => b - a; // Budget - Actual. Positive = Under Budget (Good). Negative = Over Budget (Bad).
 
+  const handleExportCSV = () => {
+    const csvData = reportData.map(item => ({
+      "Account Name": item.name,
+      "Type": item.type,
+      "Budget": item.budget,
+      "Actual": item.actual,
+      "Variance": variance(item.budget, item.actual)
+    }));
+    exportToCSV(csvData, `Budget_Vs_Actual_${new Date().toISOString().split('T')[0]}`);
+  };
+
   if (loading) return <div className="p-10 text-white">Loading Report...</div>;
 
   return (
-    <div className="min-h-screen p-6 bg-gradient-to-br from-[#1a1f2b] to-[#261b2d] text-white">
-      <div className="max-w-7xl mx-auto space-y-10">
+    <div className="min-h-screen p-4 sm:p-6 bg-gradient-to-br from-[#1a1f2b] to-[#261b2d] text-white">
+      <div className="max-w-7xl mx-auto space-y-6 sm:space-y-10">
 
         {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold mb-1">Budget vs Actual</h1>
-          <p className="text-white/60">
-            comparison of actual expenses against budget
-          </p>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold mb-1">Budget vs Actual</h1>
+            <p className="text-white/60 text-sm sm:text-base">
+              Comparison of actual expenses against budget
+            </p>
+          </div>
+          <button
+            onClick={handleExportCSV}
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-pink-500 to-rose-500 rounded-xl font-bold hover:shadow-lg hover:shadow-pink-500/30 transition-all transform hover:-translate-y-1"
+          >
+            <Download size={18} />
+            Export CSV
+          </button>
         </div>
 
         {/* Note */}
-        <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-xl text-yellow-200">
+        <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-xl text-yellow-200 text-sm">
           Note: Showing comparison of Budgeted vs Actual expenses.
         </div>
 
-        {/* TABLES */}
-        <div className="grid grid-cols-4 gap-6">
-
-          {/* Accounts */}
-          <div className="rounded-3xl bg-white/5 border border-white/10 p-6">
-            <h3 className="font-semibold mb-4">Accounts</h3>
-            {reportData.map((i) => (
-              <div key={i.id} className="py-3 border-t border-white/10">
-                {i.name}
-              </div>
-            ))}
+        {/* Table */}
+        <div className="rounded-3xl bg-white/5 border border-white/10 overflow-hidden shadow-xl">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left min-w-[700px]">
+              <thead className="bg-white/10">
+                <tr>
+                  <th className="p-4 font-semibold text-sm">Account</th>
+                  <th className="p-4 font-semibold text-sm">Type</th>
+                  <th className="p-4 font-semibold text-sm text-right">Budget (PKR)</th>
+                  <th className="p-4 font-semibold text-sm text-right">Actual (PKR)</th>
+                  <th className="p-4 font-semibold text-sm text-right">Variance</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {reportData.map((i) => {
+                  const v = variance(i.budget, i.actual);
+                  return (
+                    <tr key={i.id} className="hover:bg-white/5 transition-colors">
+                      <td className="p-4">
+                        <div className="font-semibold text-white">{i.name}</div>
+                      </td>
+                      <td className="p-4">
+                        <span className="text-xs uppercase tracking-wider text-white/40">{i.type}</span>
+                      </td>
+                      <td className="p-4 text-right tabular-nums opacity-60">
+                        PKR {i.budget.toLocaleString()}
+                      </td>
+                      <td className="p-4 text-right tabular-nums">
+                        PKR {i.actual.toLocaleString()}
+                      </td>
+                      <td className={`p-4 text-right font-bold tabular-nums ${v < 0 ? "text-red-400" : "text-green-400"}`}>
+                        {v >= 0 ? "+" : ""}PKR {v.toLocaleString()}
+                      </td>
+                    </tr>
+                  );
+                })}
+                {reportData.length === 0 && (
+                  <tr>
+                    <td colSpan="5" className="p-10 text-center text-white/30 italic">
+                      No budget vs actual data found
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
+        </div>
 
-          {/* Budget */}
-          <div className="rounded-3xl bg-white/5 border border-white/10 p-6">
-            <h3 className="font-semibold mb-4">Budget (PKR)</h3>
-            {reportData.map((i) => (
-              <div key={i.id} className="py-3 border-t border-white/10 text-right opacity-50">
-                PKR {i.budget.toLocaleString()}
-              </div>
-            ))}
+        <div className="flex justify-end gap-6 text-sm opacity-50 px-4">
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-green-400"></div>
+            <span>Under Budget (Good)</span>
           </div>
-
-          {/* Actual */}
-          <div className="rounded-3xl bg-white/5 border border-white/10 p-6">
-            <h3 className="font-semibold mb-4">Actual (PKR)</h3>
-            {reportData.map((i) => (
-              <div key={i.id} className="py-3 border-t border-white/10 text-right">
-                PKR {i.actual.toLocaleString()}
-              </div>
-            ))}
-          </div>
-
-          {/* Variance */}
-          <div className="rounded-3xl bg-white/5 border border-white/10 p-6">
-            <h3 className="font-semibold mb-4">Variance</h3>
-            {reportData.map((i) => {
-              const v = variance(i.budget, i.actual);
-              return (
-                <div
-                  key={i.id}
-                  className={`py-3 border-t border-white/10 text-right font-bold ${v < 0 ? "text-red-300" : "text-green-300"
-                    }`}
-                >
-                  {v >= 0 ? "+" : ""}PKR {v.toLocaleString()}
-                </div>
-              );
-            })}
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-red-400"></div>
+            <span>Over Budget (Bad)</span>
           </div>
         </div>
 
       </div>
-    </div >
+    </div>
   );
 };
 

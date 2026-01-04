@@ -24,10 +24,10 @@ const ReceivePayments = () => {
           databases.listDocuments(
             DATABASE_ID,
             COLLECTIONS.invoices,
-            [Query.equal("status", "Unpaid"), Query.limit(100)]
+            [Query.limit(100)]
           ),
           databases.listDocuments(DATABASE_ID, COLLECTIONS.customers, [Query.limit(100)]),
-          databases.listDocuments(DATABASE_ID, COLLECTIONS.accounts, [Query.limit(100)])
+          databases.listDocuments(DATABASE_ID, COLLECTIONS.chartOfAccounts, [Query.limit(100)])
         ]);
 
         const customerMap = {};
@@ -35,14 +35,16 @@ const ReceivePayments = () => {
           customerMap[c.$id] = c.name;
         });
 
-        // Map Invoices
-        const mappedInvoices = invoicesRes.documents.map(doc => ({
-          id: doc.$id,
-          date: doc.invoice_date,
-          customer: customerMap[doc.customer_id] || "Unknown Customer",
-          amount: doc.total_amount || 0,
-          status: doc.status
-        })).sort((a, b) => new Date(b.date) - new Date(a.date));
+        // Map and Filter Invoices (Case-insensitive unpaid)
+        const mappedInvoices = invoicesRes.documents
+          .filter(doc => doc.status && doc.status.toLowerCase() === "unpaid")
+          .map(doc => ({
+            id: doc.$id,
+            date: doc.invoice_date,
+            customer: customerMap[doc.customer_id] || "Unknown Customer",
+            amount: doc.total_amount || 0,
+            status: doc.status
+          })).sort((a, b) => new Date(b.date) - new Date(a.date));
 
         setInvoices(mappedInvoices);
 
@@ -69,16 +71,6 @@ const ReceivePayments = () => {
     inv => inv.id === selectedInvoice
   );
 
-  const glowIn = e => {
-    e.currentTarget.style.boxShadow = "0 0 25px rgba(255,77,141,0.6)";
-    e.currentTarget.style.transform = "translateY(-2px)";
-  };
-
-  const glowOut = e => {
-    e.currentTarget.style.boxShadow = "none";
-    e.currentTarget.style.transform = "translateY(0)";
-  };
-
   const handleApplyPayment = async () => {
     if (!selectedInvoiceDetails || !paymentAmount || !selectedAccount) {
       alert("Please select an invoice, deposit account, and enter amount.");
@@ -97,7 +89,7 @@ const ReceivePayments = () => {
     setLoading(true);
     try {
       // Find "Accounts Receivable" account ID dynamically
-      const allAccountsRes = await databases.listDocuments(DATABASE_ID, COLLECTIONS.accounts, [Query.limit(100)]);
+      const allAccountsRes = await databases.listDocuments(DATABASE_ID, COLLECTIONS.chartOfAccounts, [Query.limit(100)]);
       const arAccount = allAccountsRes.documents.find(
         a => a.account_name.toLowerCase() === 'accounts receivable'
       ) || allAccountsRes.documents.find(
@@ -106,22 +98,14 @@ const ReceivePayments = () => {
         a => a.account_name.toLowerCase().includes('receivable') && a.account_type === 'Asset'
       );
 
-      // If we strictly cannot find AR, we might default to same type or error. 
-      // For Demo, if no AR found, we just warn or fail.
       if (!arAccount) {
         throw new Error("Could not find 'Accounts Receivable' account to credit.");
       }
 
-      // Create Receipt Journal Entry
-      // DR Cash (or Bank) - Selected Account
-      // CR Accounts Receivable - arAccount
-
-      const entryRef = `RCPT-${Date.now().toString().slice(-6)}`;
-
       // 1. Journal Entry
       await databases.createDocument(
         DATABASE_ID,
-        COLLECTIONS.journal_entries,
+        COLLECTIONS.journalEntries,
         ID.unique(),
         {
           date: new Date(paymentDate).toISOString(),
@@ -172,155 +156,136 @@ const ReceivePayments = () => {
     }
   };
 
-  const optionStyle = {
-    background: "#1e3a5f",
-    color: "#ffffff"
-  };
-
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        padding: "24px",
-        background: "linear-gradient(135deg,#1a1f2b,#261b2d)",
-        color: "#fff",
-        overflowY: "auto"
-      }}
-    >
-      <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
-        <h1 style={{ fontSize: "28px", marginBottom: "8px" }}>
-          Receive Payments
-        </h1>
-        <p style={{ opacity: 0.7, marginBottom: "24px" }}>
-          Record customer payments against invoices
-        </p>
+    <div className="min-h-screen p-4 sm:p-6 bg-gradient-to-br from-[#121620] to-[#1a1c2e] text-white">
+      <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8">
 
-        <div
-          style={{
-            padding: "24px",
-            borderRadius: "18px",
-            background: "rgba(255,255,255,0.06)",
-            backdropFilter: "blur(16px)"
-          }}
-        >
-          {/* Invoice Selector */}
-          <div style={{ marginBottom: "24px" }}>
-            <label style={{ display: 'block', marginBottom: '8px' }}>Select Unpaid Invoice</label>
+        {/* HEADER */}
+        <div>
+          <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60">
+            Receive Payments
+          </h1>
+          <p className="text-white/40 text-sm sm:text-base mt-1 italic">
+            Record customer payments against invoices
+          </p>
+        </div>
 
-            <select
-              value={selectedInvoice}
-              onChange={e => {
-                const inv = invoices.find(i => i.id === e.target.value);
-                setSelectedInvoice(e.target.value);
-                if (inv) setPaymentAmount(inv.amount.toString());
-              }}
-              style={selectStyle}
-              disabled={loading}
-            >
-              <option value="" style={optionStyle}>
-                {loading ? "Loading..." : (invoices.length === 0 ? "No Unpaid Invoices" : "-- Select Invoice --")}
-              </option>
-              {invoices.map(inv => (
-                <option key={inv.id} value={inv.id} style={optionStyle}>
-                  {new Date(inv.date).toLocaleDateString()} - {inv.customer} (₹{inv.amount})
-                </option>
-              ))}
-            </select>
-          </div>
+        {/* MAIN CARD */}
+        <div className="p-6 sm:p-10 rounded-[2.5rem] bg-white/5 border border-white/10 backdrop-blur-xl shadow-2xl relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-pink-500/10 rounded-full blur-3xl -mr-32 -mt-32 group-hover:bg-pink-500/20 transition-all duration-700"></div>
 
-          <div style={{ marginBottom: "24px" }}>
-            <label style={{ display: 'block', marginBottom: '8px' }}>Received Amount</label>
-            <input
-              type="number"
-              placeholder="Payment Amount"
-              value={paymentAmount}
-              onChange={e => setPaymentAmount(e.target.value)}
-              style={inputStyle}
-            />
-          </div>
+          <div className="relative z-10">
+            <h2 className="text-xl font-bold flex items-center gap-2 mb-8">
+              <span className="w-1.5 h-6 bg-pink-500 rounded-full"></span>
+              Payment Details
+            </h2>
 
-          <div style={{ marginBottom: "24px" }}>
-            <label style={{ display: 'block', marginBottom: '8px' }}>Deposit To (Debit Account)</label>
-            <select
-              value={selectedAccount}
-              onChange={e => setSelectedAccount(e.target.value)}
-              style={selectStyle}
-            >
-              {accounts.map(a => (
-                <option key={a.id} value={a.id} style={optionStyle}>{a.name}</option>
-              ))}
-            </select>
-          </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-12">
 
-          <div className="grid grid-cols-2 gap-4 mb-6" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-            <div>
-              <label style={{ display: 'block', marginBottom: '8px' }}>Date</label>
-              <input
-                type="date"
-                value={paymentDate}
-                onChange={e => setPaymentDate(e.target.value)}
-                style={inputStyle}
-              />
+              {/* LEFT COLUMN: SELECTIONS */}
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-[10px] uppercase font-bold text-white/30 tracking-widest mb-3 px-1">Select Unpaid Invoice</label>
+                  <select
+                    value={selectedInvoice}
+                    onChange={e => {
+                      const inv = invoices.find(i => i.id === e.target.value);
+                      setSelectedInvoice(e.target.value);
+                      if (inv) setPaymentAmount(inv.amount.toString());
+                    }}
+                    disabled={loading}
+                    className="w-full px-5 py-4 rounded-2xl bg-white/5 border border-white/10 text-white outline-none focus:border-pink-500 transition-all font-medium appearance-none cursor-pointer hover:bg-white/[0.07]"
+                  >
+                    <option value="" className="bg-[#1a1c2e]">
+                      {loading ? "Loading..." : (invoices.length === 0 ? "No Unpaid Invoices" : "-- Select Invoice --")}
+                    </option>
+                    {invoices.map(inv => (
+                      <option key={inv.id} value={inv.id} className="bg-[#1a1c2e]">
+                        {new Date(inv.date).toLocaleDateString()} - {inv.customer} (PKR {inv.amount.toLocaleString()})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] uppercase font-bold text-white/30 tracking-widest mb-3 px-1">Deposit To (Debit Account)</label>
+                  <select
+                    value={selectedAccount}
+                    onChange={e => setSelectedAccount(e.target.value)}
+                    className="w-full px-5 py-4 rounded-2xl bg-white/5 border border-white/10 text-white outline-none focus:border-pink-500 transition-all font-medium appearance-none cursor-pointer hover:bg-white/[0.07]"
+                  >
+                    {accounts.map(a => (
+                      <option key={a.id} value={a.id} className="bg-[#1a1c2e]">{a.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* RIGHT COLUMN: AMOUNTS & DATES */}
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-[10px] uppercase font-bold text-white/30 tracking-widest mb-3 px-1">Payment Date</label>
+                    <input
+                      type="date"
+                      value={paymentDate}
+                      onChange={e => setPaymentDate(e.target.value)}
+                      className="w-full px-5 py-4 rounded-2xl bg-white/5 border border-white/10 text-white outline-none focus:border-pink-500 transition-all font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] uppercase font-bold text-white/30 tracking-widest mb-3 px-1">Amount</label>
+                    <div className="relative">
+                      <span className="absolute left-5 top-1/2 -translate-y-1/2 text-white/30 font-bold text-sm">PKR</span>
+                      <input
+                        type="number"
+                        placeholder="0.00"
+                        value={paymentAmount}
+                        onChange={e => setPaymentAmount(e.target.value)}
+                        className="w-full pl-16 pr-5 py-4 rounded-2xl bg-white/5 border border-white/10 text-white outline-none focus:border-pink-500 transition-all font-bold text-lg"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] uppercase font-bold text-white/30 tracking-widest mb-3 px-1">Reference / Description</label>
+                  <input
+                    type="text"
+                    placeholder="Check #, Bank Transfer Ref, etc."
+                    value={reference}
+                    onChange={e => setReference(e.target.value)}
+                    className="w-full px-5 py-4 rounded-2xl bg-white/5 border border-white/10 text-white outline-none focus:border-pink-500 transition-all font-medium placeholder:text-white/20"
+                  />
+                </div>
+              </div>
             </div>
-            <div>
-              <label style={{ display: 'block', marginBottom: '8px' }}>Reference</label>
-              <input
-                type="text"
-                placeholder="Ref #"
-                value={reference}
-                onChange={e => setReference(e.target.value)}
-                style={inputStyle}
-              />
-            </div>
-          </div>
 
-          <div style={{ display: "flex", gap: "14px", flexWrap: "wrap", marginTop: '20px' }}>
-            <button
-              onMouseEnter={glowIn}
-              onMouseLeave={glowOut}
-              onClick={handleApplyPayment}
-              style={{ ...btnStyle, background: "#ff4d8d", flex: 1 }}
-            >
-              Apply Payment
-            </button>
+            <div className="mt-12 flex flex-col sm:flex-row items-center justify-between gap-6 pt-8 border-t border-white/10">
+              <div className="text-sm text-white/40">
+                <p>Ensure all details are correct before applying.</p>
+                <p>This will create a Journal Entry and update the invoice status.</p>
+              </div>
+              <button
+                onClick={handleApplyPayment}
+                disabled={loading || !selectedInvoice}
+                className="w-full sm:w-auto px-10 py-5 rounded-2xl bg-gradient-to-r from-pink-500 to-rose-600 text-white font-black text-lg shadow-xl shadow-pink-500/20 hover:shadow-pink-500/40 hover:-translate-y-1 transition-all active:translate-y-0 disabled:opacity-50 disabled:translate-y-0 disabled:shadow-none"
+              >
+                {loading ? "Processing..." : "APPLY PAYMENT"}
+              </button>
+            </div>
           </div>
         </div>
+
+        {/* RECENT RECORDS (Visual Placeholder / Info) */}
+        {!selectedInvoice && (
+          <div className="p-8 rounded-3xl border border-dashed border-white/10 text-center text-white/20">
+            Select an invoice above to see details and record payment
+          </div>
+        )}
       </div>
     </div>
   );
-};
-
-const inputStyle = {
-  width: "100%",
-  padding: "12px",
-  borderRadius: "10px",
-  background: "rgba(255,255,255,0.08)",
-  color: "#fff",
-  border: "none",
-  marginTop: "0px",
-  marginBottom: "0px"
-};
-
-const selectStyle = {
-  width: "100%",
-  padding: "12px",
-  borderRadius: "10px",
-  background: "rgba(255,255,255,0.08)",
-  color: "#fff",
-  border: "none",
-  marginTop: "0px",
-  marginBottom: "0px"
-};
-
-const btnStyle = {
-  padding: "12px 22px",
-  borderRadius: "14px",
-  color: "#fff",
-  border: "none",
-  cursor: "pointer",
-  transition: "0.3s",
-  fontWeight: 'bold',
-  fontSize: '16px'
 };
 
 export default ReceivePayments;

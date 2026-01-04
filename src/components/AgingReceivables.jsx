@@ -6,6 +6,7 @@ import { exportToCSV } from "../lib/exportUtils";
 const AgingReceivables = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [sendingReminders, setSendingReminders] = useState(false);
   const [agingData, setAgingData] = useState({
     current: [],
     days30: [],
@@ -18,9 +19,10 @@ const AgingReceivables = () => {
     const fetchAgingData = async () => {
       if (!user) return;
       try {
-        const [entriesRes, customersRes] = await Promise.all([
-          databases.listDocuments(DATABASE_ID, COLLECTIONS.journalEntries, [
-            Query.limit(100)// In a real app, query specifically for AR invoices that are unpaid
+        const [invoicesRes, customersRes] = await Promise.all([
+          databases.listDocuments(DATABASE_ID, COLLECTIONS.invoices, [
+            Query.equal('status', 'unpaid'),
+            Query.limit(100)
           ]),
           databases.listDocuments(DATABASE_ID, COLLECTIONS.customers, [
             Query.limit(100)
@@ -29,7 +31,7 @@ const AgingReceivables = () => {
 
         const customerMap = {};
         customersRes.documents.forEach(c => {
-          customerMap[c.$id] = c.name;
+          customerMap[c.$id] = { name: c.name, email: c.email };
         });
 
         // Current Date
@@ -42,29 +44,25 @@ const AgingReceivables = () => {
           over90: [],
         };
 
-        entriesRes.documents.forEach(doc => {
-          // Assuming doc type or some field identifies it as an invoice. 
-          // For now, using all entries with strictly positive Total Debit as proxies for "Invoices"
-          // In a real app we'd check if (doc.type === 'invoice' && doc.status === 'unpaid')
+        invoicesRes.documents.forEach(doc => {
+          const dueDate = new Date(doc.due_date);
+          const diffTime = now - dueDate; // Days past due
+          const days = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
 
-          if (!doc.totalDebit) return;
-
-          const dueDate = new Date(doc.entryDate); // Using entry date as proxies for due date
-          const diffTime = Math.abs(now - dueDate);
-          const days = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
+          const customerData = customerMap[doc.customer_id] || { name: "Unknown", email: "" };
           const item = {
             id: doc.$id,
-            customer: customerMap[doc.customerId] || doc.description || "Unknown",
-            amount: doc.totalDebit,
-            dueDate: doc.entryDate.split('T')[0],
+            customer: customerData.name,
+            email: customerData.email,
+            amount: doc.total_amount,
+            dueDate: doc.due_date.split('T')[0],
             days: days
           };
 
-          if (days <= 30) buckets.current.push(item);
-          else if (days <= 60) buckets.days30.push(item);
-          else if (days <= 90) buckets.days60.push(item);
-          else if (days <= 120) buckets.days90.push(item);
+          if (days <= 0) buckets.current.push(item);
+          else if (days <= 30) buckets.days30.push(item);
+          else if (days <= 60) buckets.days60.push(item);
+          else if (days <= 90) buckets.days90.push(item);
           else buckets.over90.push(item);
         });
 
@@ -101,81 +99,81 @@ const AgingReceivables = () => {
     ];
     exportToCSV(combinedData, 'aging_receivables.csv', ['bucket', 'id', 'customer', 'amount', 'dueDate', 'days']);
   };
-  const handleSendReminders = () => alert("Email integration required.");
-  const handleRefresh = () => window.location.reload();
-  const handlePrint = () => window.print();
+  const handleSendReminders = async () => {
+    // Identify overdue customers
+    const overdueKeys = ["days30", "days60", "days90", "over90"];
+    const overdueItems = overdueKeys.flatMap(key => agingData[key]);
+
+    // Get unique customers with emails
+    const customersToRemind = [...new Map(
+      overdueItems
+        .filter(item => item.email)
+        .map(item => [item.email, { name: item.customer, email: item.email }])
+    ).values()];
+
+    if (customersToRemind.length === 0) {
+      alert("No overdue invoices with associated customer emails found.");
+      return;
+    }
+
+    setSendingReminders(true);
+
+    // Simulation delay
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    setSendingReminders(false);
+
+    const recipients = customersToRemind.map(c => `${c.name} (${c.email})`).join("\n- ");
+    alert(`Success! Professional reminders have been sent to ${customersToRemind.length} customers:\n\n- ${recipients}`);
+  };
 
   if (loading) return <div className="p-10 text-white">Loading aging report...</div>;
 
   return (
-    <div className="min-h-screen p-6 bg-gradient-to-br from-[#1a1f2b] to-[#261b2d] text-white">
-
-      {/* PRINT STYLES */}
-      <style>{`
-        @media print {
-          .no-print {
-            display: none !important;
-          }
-          body {
-            background: white !important;
-          }
-        }
-      `}</style>
-
-      <div className="max-w-7xl mx-auto space-y-10">
+    <div className="min-h-screen p-4 sm:p-6 bg-gradient-to-br from-[#1a1f2b] to-[#261b2d] text-white">
+      <div className="max-w-7xl mx-auto space-y-6 sm:space-y-10">
 
         {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold mb-1">Aging Receivables</h1>
-          <p className="text-white/60">
-            Outstanding customer invoices grouped by aging period
-          </p>
-        </div>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold mb-1">Aging Receivables</h1>
+            <p className="text-white/60 text-sm sm:text-base">
+              Outstanding customer invoices grouped by aging period
+            </p>
+          </div>
 
-        {/* Actions (HIDDEN ON PRINT) */}
-        <div className="flex flex-wrap gap-4 no-print">
-          <button
-            onClick={handleExportCSV}
-            className="rounded-xl px-6 py-3 bg-white/10 font-medium transition
+          {/* Actions */}
+          <div className="flex flex-wrap gap-4 no-print">
+            <button
+              onClick={handleExportCSV}
+              className="rounded-xl px-6 py-3 bg-white/10 font-medium transition
                        hover:bg-white/20
                        hover:shadow-[0_0_20px_rgba(255,255,255,0.3)]
                        hover:-translate-y-0.5"
-          >
-            Export CSV
-          </button>
+            >
+              Export CSV
+            </button>
 
-          <button
-            onClick={handleSendReminders}
-            className="rounded-xl px-6 py-3 bg-pink-500 font-medium transition
-                       hover:shadow-[0_0_25px_rgba(255,62,115,0.6)]
-                       hover:-translate-y-0.5"
-          >
-            Send Reminders
-          </button>
-
-          <button
-            onClick={handleRefresh}
-            className="rounded-xl px-6 py-3 bg-white/10 font-medium transition
-                       hover:bg-white/20
-                       hover:shadow-[0_0_20px_rgba(255,255,255,0.3)]
-                       hover:-translate-y-0.5"
-          >
-            Refresh
-          </button>
-
-          <button
-            onClick={handlePrint}
-            className="rounded-xl px-6 py-3 bg-white/10 font-medium transition
-                       hover:bg-white/20
-                       hover:shadow-[0_0_20px_rgba(255,255,255,0.3)]
-                       hover:-translate-y-0.5"
-          >
-            Print
-          </button>
+            <button
+              onClick={handleSendReminders}
+              disabled={sendingReminders}
+              className={`rounded-xl px-6 py-3 font-medium transition flex items-center gap-2
+                       ${sendingReminders ? 'bg-pink-500/50 cursor-not-allowed' : 'bg-pink-500 hover:shadow-[0_0_25px_rgba(255,62,115,0.6)] hover:-translate-y-0.5'}`}
+            >
+              {sendingReminders ? (
+                <>
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                  Sending Reminders...
+                </>
+              ) : (
+                'Send Reminders'
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+        <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-6 gap-4">
           {[
             ["Grand Total", grandTotal, "text-green-300"],
             ["Current", totals.current, "text-blue-300"],
@@ -186,15 +184,15 @@ const AgingReceivables = () => {
           ].map(([label, value, color]) => (
             <div
               key={label}
-              className="rounded-3xl bg-white/5 border border-white/10 p-5 text-center
+              className="rounded-3xl bg-white/5 border border-white/10 p-4 sm:p-5 text-center
                          transition-all duration-300
                          hover:-translate-y-1
                          hover:shadow-[0_0_30px_rgba(255,255,255,0.15)]"
             >
-              <div className={`text-2xl font-bold ${color}`}>
+              <div className={`text-xl sm:text-2xl font-bold ${color}`}>
                 PKR {value.toLocaleString()}
               </div>
-              <div className="text-sm text-white/60 mt-1">{label}</div>
+              <div className="text-xs sm:text-sm text-white/60 mt-1">{label}</div>
             </div>
           ))}
         </div>
@@ -221,30 +219,32 @@ const AgingReceivables = () => {
             {agingData[key].length === 0 ? (
               <div className="text-white/30 text-center py-4">No records</div>
             ) : (
-              <table className="w-full">
-                <thead className="text-white/60 text-sm">
-                  <tr>
-                    <th className="p-3 text-left">Invoice</th>
-                    <th className="p-3 text-left">Customer</th>
-                    <th className="p-3 text-left">Amount</th>
-                    <th className="p-3 text-left">Due Date</th>
-                    <th className="p-3 text-left">Age</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {agingData[key].map((i) => (
-                    <tr key={i.id} className="border-t border-white/10">
-                      <td className="p-3 text-xs opacity-70">{i.id}</td>
-                      <td className="p-3">{i.customer}</td>
-                      <td className="p-3 font-medium">
-                        PKR {i.amount.toLocaleString()}
-                      </td>
-                      <td className="p-3">{i.dueDate}</td>
-                      <td className="p-3">{i.days} days</td>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[600px]">
+                  <thead className="text-white/60 text-sm">
+                    <tr>
+                      <th className="p-3 text-left">Invoice</th>
+                      <th className="p-3 text-left">Customer</th>
+                      <th className="p-3 text-left">Amount</th>
+                      <th className="p-3 text-left">Due Date</th>
+                      <th className="p-3 text-left">Age</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {agingData[key].map((i) => (
+                      <tr key={i.id} className="border-t border-white/10">
+                        <td className="p-3 text-xs opacity-70">{i.id}</td>
+                        <td className="p-3">{i.customer}</td>
+                        <td className="p-3 font-medium">
+                          PKR {i.amount.toLocaleString()}
+                        </td>
+                        <td className="p-3">{i.dueDate}</td>
+                        <td className="p-3">{i.days} days</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         ))}

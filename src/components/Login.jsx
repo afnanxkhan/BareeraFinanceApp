@@ -15,8 +15,6 @@ export default function Login({ onSwitchToRegister }) {
 
     try {
       await login(email, password);
-      // No need to redirect manually or call onLoginSuccess, 
-      // AuthContext update will trigger App.jsx re-render
     } catch (err) {
       console.error(err);
       if (err.code === 429) {
@@ -32,82 +30,93 @@ export default function Login({ onSwitchToRegister }) {
   };
 
   return (
-    <div
-      className="min-h-screen flex items-center justify-center relative overflow-hidden p-6"
-      style={{
-        background:
-          "radial-gradient(circle at top left, #2a2f45 0%, #1a1f2b 40%, #13151b 100%)",
-      }}
-    >
-      <div className="absolute top-10 left-20 w-72 h-72 bg-purple-600/30 blur-[120px] rounded-full"></div>
-      <div className="absolute bottom-20 right-32 w-96 h-96 bg-blue-500/20 blur-[150px] rounded-full"></div>
+    <div className="min-h-screen flex items-center justify-center relative overflow-hidden p-6 bg-[#0f1117]">
+      {/* Dynamic Background Elements */}
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-600/20 blur-[120px] rounded-full animate-pulse"></div>
+      <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-600/10 blur-[150px] rounded-full"></div>
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[30%] h-[30%] bg-pink-500/5 blur-[100px] rounded-full"></div>
 
-      <div className="relative z-10 w-full max-w-md p-8 rounded-3xl 
-        bg-white/10 backdrop-blur-xl border border-white/20 
-        shadow-2xl text-white">
+      <div className="relative z-10 w-full max-w-md p-8 sm:p-12 rounded-[2.5rem] 
+        bg-white/5 backdrop-blur-3xl border border-white/10 
+        shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] text-white">
 
-        <h2 className="text-4xl font-bold text-center mb-2">Welcome Back</h2>
-        <p className="text-center text-white/70 mb-8">Login to continue</p>
+        <div className="text-center mb-10">
+          <div className="w-16 h-16 bg-gradient-to-tr from-purple-500 to-blue-500 rounded-2xl mx-auto mb-6 flex items-center justify-center shadow-lg shadow-purple-500/20">
+            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+          </div>
+          <h2 className="text-3xl sm:text-4xl font-black tracking-tight mb-2 bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60">
+            Welcome Back
+          </h2>
+          <p className="text-white/40 text-sm font-medium italic">Enter your credentials to access your dashboard</p>
+        </div>
 
         {error && (
-          <div className="mb-4 p-3 text-red-300 bg-red-500/20 rounded-lg text-center">
+          <div className="mb-8 p-4 text-xs font-bold uppercase tracking-widest text-red-300 bg-red-500/10 border border-red-500/20 rounded-2xl text-center">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleLogin} className="flex flex-col gap-5">
-
-          <div>
-            <label className="text-white/80 ml-1">Email Address</label>
-            <input
-              type="email"
-              required
-              className="w-full p-3 rounded-xl bg-white/20 border border-white/30 
-              text-white placeholder-white/60 outline-none mt-1
-              focus:ring-2 focus:ring-purple-400 transition"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
+        <form onSubmit={handleLogin} className="space-y-6">
+          <div className="space-y-2">
+            <label className="block text-[10px] uppercase font-bold text-white/30 tracking-[0.2em] ml-1">Account Email</label>
+            <div className="relative group">
+              <input
+                type="email"
+                required
+                className="w-full px-5 py-4 rounded-2xl bg-white/5 border border-white/10 
+                text-white placeholder-white/20 outline-none
+                focus:border-purple-500/50 focus:bg-white/[0.08] transition-all duration-300 font-medium"
+                placeholder="name@company.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
           </div>
 
-          <div>
-            <label className="text-white/80 ml-1">Password</label>
-            <input
-              type="password"
-              required
-              className="w-full p-3 rounded-xl bg-white/20 border border-white/30 
-              text-white placeholder-white/60 outline-none mt-1
-              focus:ring-2 focus:ring-blue-400 transition"
-              placeholder="•••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
+          <div className="space-y-2">
+            <label className="block text-[10px] uppercase font-bold text-white/30 tracking-[0.2em] ml-1">Security Password</label>
+            <div className="relative group">
+              <input
+                type="password"
+                required
+                className="w-full px-5 py-4 rounded-2xl bg-white/5 border border-white/10 
+                text-white placeholder-white/20 outline-none
+                focus:border-blue-500/50 focus:bg-white/[0.08] transition-all duration-300 font-medium"
+                placeholder="••••••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full mt-4 p-3 rounded-xl bg-gradient-to-r 
-            from-purple-600 to-blue-600 hover:opacity-90 
-            transition text-white font-semibold shadow-lg"
+            className="w-full mt-6 py-4 rounded-2xl bg-gradient-to-r 
+            from-purple-600 to-blue-600 hover:shadow-xl hover:shadow-purple-500/20 hover:-translate-y-0.5
+            active:translate-y-0 active:shadow-none transition-all duration-300 
+            text-white font-black uppercase tracking-widest shadow-lg disabled:opacity-50"
           >
-            {loading ? "Logging in..." : "Login"}
+            {loading ? "AUTHENTICATING..." : "SIGN IN"}
           </button>
         </form>
 
-        <p className="text-center text-white/60 text-sm mt-6">
-          Don't have an account?{" "}
-          <button
-            onClick={onSwitchToRegister}
-            className="text-blue-300 hover:text-blue-200 font-semibold underline decoration-2 underline-offset-4"
-          >
-            Register here
-          </button>
-        </p>
+        <div className="mt-10 pt-8 border-t border-white/5 text-center">
+          <p className="text-white/40 text-xs font-medium">
+            New to the platform?{" "}
+            <button
+              onClick={onSwitchToRegister}
+              className="text-blue-400 hover:text-blue-300 font-bold transition-colors underline decoration-blue-400/30 underline-offset-4"
+            >
+              Request Access
+            </button>
+          </p>
+        </div>
 
-        <p className="text-center text-white/40 text-xs mt-8">
-          © {new Date().getFullYear()} Finance App — All Rights Reserved.
+        <p className="text-center text-white/10 text-[9px] uppercase font-black tracking-[0.3em] mt-8">
+          Secure Terminal — {new Date().getFullYear()}
         </p>
       </div>
     </div>
